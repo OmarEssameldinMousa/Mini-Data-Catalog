@@ -4,7 +4,7 @@ from fastapi.responses import JSONResponse
 from app.config import get_settings
 from app.routers.dataset import router as dataset_router
 from app.exceptions import DatasetNotFound, VersionNotFound, DatasetAlreadyExists, RegistryException
-from app.database import AsyncSession, init_db, close_db
+from app.database import init_db, close_db
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

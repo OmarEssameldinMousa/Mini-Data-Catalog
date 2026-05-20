@@ -29,7 +29,7 @@ from app.models.basemodel import Base
 
 settings = get_settings()
 
-config.set_main_option("sqlalchemy.url", settings.registry_db_url)
+config.set_main_option("sqlalchemy.url", settings.database_url)
 
 target_metadata = Base.metadata
 
