@@ -3,15 +3,18 @@ from functools import lru_cache
 
 class Settings(BaseSettings):
     
-    lineage_service_name: str 
+    service_name: str 
     
-    lineage_service_version: str
+    service_version: str
 
-    lineage_db_url: str
+    database_url: str
+
+    registry_url: str = "http://registry:8000"
 
     debug: bool = False
 
     model_config = SettingsConfigDict(
+        env_prefix="LINEAGE_",
         extra="ignore"
     )
 

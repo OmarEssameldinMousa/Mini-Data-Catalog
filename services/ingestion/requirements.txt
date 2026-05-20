@@ -6,3 +6,5 @@ alembic
 pydantic-settings
 httpx
 asyncpg
+pandas
+python-multipart

@@ -3,15 +3,20 @@ from functools import lru_cache
 
 class Settings(BaseSettings):
     
-    ingestion_service_name: str 
+    service_name: str 
 
-    ingestion_service_version: str
+    service_version: str
 
-    ingestion_db_url: str
+    database_url: str
+
+    validator_url: str = "http://validator:8000"
+
+    registry_url: str = "http://registry:8000"
 
     debug: bool = False
 
     model_config = SettingsConfigDict(
+        env_prefix="INGESTION_",
         extra="ignore"
     )
 
