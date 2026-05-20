@@ -12,7 +12,6 @@ from app.schemas.edge import EdgeCreate, EdgeResponse
 from app.schemas.dataset import DatasetDepthResponse, LineageGraphResponse
 
 router = APIRouter(
-    prefix="/lineage",
     tags=["lineage"],
 )
 

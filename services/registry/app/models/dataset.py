@@ -4,11 +4,13 @@ from sqlalchemy import String, ForeignKey, func, Table, Column, Index
 from typing import Optional, List
 from .db_enums.enums import StatusEnum, DataFormatEnum
 from datetime import datetime
+import uuid
+from sqlalchemy.types import Uuid
 
 dataset_tag_association = Table(
     "dataset_tag_association",
     Base.metadata,
-    Column("dataset_id", ForeignKey("dataset.id", ondelete="CASCADE"), primary_key=True),
+    Column("dataset_id", Uuid, ForeignKey("dataset.id", ondelete="CASCADE"), primary_key=True),
     Column("tag_id", ForeignKey("tag.id", ondelete="CASCADE"), primary_key=True)
 )
 
@@ -19,7 +21,7 @@ class Dataset(Base):
         Index("idx_dataset_owner_data_format", "owner", "data_format"),
     )
 
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
     owner: Mapped[Optional[str]] = mapped_column(String(100))
     description: Mapped[str] = mapped_column(String(500), nullable=True) # Assuming nullable here

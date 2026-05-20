@@ -53,14 +53,13 @@ class DatasetRepository:
         # Creat the first version - must be provided in the requet body
         version_data = dataset_in.versions[0] 
 
-        version_data_dict = version_data.model_dump()
+        version_data_dict = version_data.model_dump(exclude={"validator_schema_id"})
         new_version = DatasetVersion(**version_data_dict)
         db_dataset.versions.append(new_version)
 
         self.session.add(db_dataset)
         await self.session.commit()
-        await self.session.refresh(db_dataset)
-        return db_dataset 
+        return await self.get_by_id(str(db_dataset.id)) 
     
     async def get_all(
             self, 
@@ -172,7 +171,7 @@ class DatasetRepository:
         
 
     async def create_version(self, dataset_id: str, version_data: DataSetVersionCreate) -> DatasetVersion:
-        version_data_dict = version_data.model_dump()
+        version_data_dict = version_data.model_dump(exclude={"validator_schema_id"})
         new_version = DatasetVersion(**version_data_dict)
         new_version.dataset_id = dataset_id
 

@@ -9,6 +9,8 @@ class Settings(BaseSettings):
 
     database_url: str
 
+    validator_url: str = "http://validator:8000"
+
     debug: bool = False
 
     model_config = SettingsConfigDict(

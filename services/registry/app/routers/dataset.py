@@ -1,5 +1,5 @@
 # services/registry/app/routers/dataset.py
-from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, Request
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -80,15 +80,24 @@ async def update_dataset(
     updated_dataset = await service.update_dataset(dataset_id, dataset_in)
     return updated_dataset    
 
+from app.clients.validator_client import ValidatorClient
+
 # Add a new version with schema snapshot       
 @router.post("/{dataset_id}/versions", response_model=DataSetVersionRead, status_code=201)
 async def add_dataset_version(
+    request: Request,
     dataset_id: str,
     version_data: DataSetVersionCreate,
     db: AsyncSession = Depends(get_db),
 ):
     service = DatasetService(session=db)
-    new_version = await service.create_dataset_version(dataset_id, version_data)
+    
+    validator_client = ValidatorClient(
+        http_client=request.app.state.http_client,
+        base_url=request.app.state.validator_url
+    )
+    
+    new_version = await service.create_dataset_version(dataset_id, version_data, validator_client=validator_client)
     return new_version
 
 # list all versions of a dataset

@@ -29,9 +29,11 @@ class DatasetUpdate(BaseModel):
     
     tags: Optional[List[str]] = None
 
+import uuid
+
 class DatasetRead(DatasetBase):
     
-    id: int 
+    id: uuid.UUID 
     status: StatusEnum
     created_at: datetime
     updated_at: datetime

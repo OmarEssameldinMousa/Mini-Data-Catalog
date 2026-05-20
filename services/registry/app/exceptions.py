@@ -29,3 +29,19 @@ class VersionNotFound(RegistryException):
     def __init__(self, version_id: str):
         self.version_id = version_id
         super().__init__(f"Version '{version_id}' not found.")
+
+class SchemaValidationFailed(RegistryException):
+    """
+    Raised when validation against a schema fails.
+    Should return HTTP 422 with the validation errors.
+    """
+    def __init__(self, errors: list):
+        self.errors = errors
+        super().__init__("Schema validation failed.")
+
+class ServiceUnavailableError(RegistryException):
+    """Raised when an external service is unreachable."""
+    def __init__(self, service_name: str, detail: str = ""):
+        self.service_name = service_name
+        self.detail = detail
+        super().__init__(f"Service '{service_name}' is unavailable. {detail}")

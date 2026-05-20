@@ -3,11 +3,14 @@ from sqlalchemy import ForeignKey, JSON, BigInteger, func
 from datetime import datetime
 from .basemodel import Base
 
+import uuid
+from sqlalchemy.types import Uuid
+
 class DatasetVersion(Base):
     __tablename__ = "dataset_version"
 
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    dataset_id: Mapped[int] = mapped_column(ForeignKey("dataset.id", ondelete="CASCADE"))
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    dataset_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("dataset.id", ondelete="CASCADE"))
     version_number: Mapped[int] = mapped_column(nullable=False, default=1)
     schema_snapshot: Mapped[dict] = mapped_column(JSON) 
     row_count: Mapped[int] = mapped_column(BigInteger)

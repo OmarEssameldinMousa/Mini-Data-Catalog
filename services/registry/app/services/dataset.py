@@ -55,8 +55,15 @@ class DatasetService:
         datasets, total = await self.repo.get_versions(dataset_id, limit, offset)
         return datasets, total
 
-    async def create_dataset_version(self, dataset_id: str, version_data: DataSetVersionCreate):
+    async def create_dataset_version(self, dataset_id: str, version_data: DataSetVersionCreate, validator_client: 'ValidatorClient' = None):
         from sqlalchemy.exc import IntegrityError
+        
+        if version_data.validator_schema_id and validator_client:
+            await validator_client.validate(
+                schema_id=version_data.validator_schema_id,
+                payload=version_data.schema_snapshot
+            )
+
         try:
             return await self.repo.create_version(dataset_id, version_data)
         except IntegrityError:
