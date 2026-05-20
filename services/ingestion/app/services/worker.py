@@ -1,3 +1,4 @@
+import asyncio
 import pandas as pd
 import os
 import json
@@ -9,6 +10,11 @@ from app.clients.validator import SchemaValidatorClient, SchemaValidationError
 from app.clients.registry_client import RegistryClient
 
 logger = logging.getLogger(__name__)
+
+
+def _read_csv_chunks(file_path: str, chunk_size: int) -> list[pd.DataFrame]:
+    """Synchronous CSV reader — meant to be called via asyncio.to_thread."""
+    return list(pd.read_csv(file_path, chunksize=chunk_size))
 
 
 async def process_csv_task(
@@ -38,7 +44,10 @@ async def process_csv_task(
 
             chunk_size = 10000
 
-            for i, chunk in enumerate(pd.read_csv(file_path, chunksize=chunk_size)):
+            # Offload synchronous pandas I/O to a thread to avoid blocking the event loop
+            chunks = await asyncio.to_thread(_read_csv_chunks, file_path, chunk_size)
+
+            for i, chunk in enumerate(chunks):
                 if i == 0:
                     first_row = json.loads(chunk.iloc[0].to_json())
                     try:
@@ -85,11 +94,9 @@ async def process_csv_task(
 
         except Exception as e:
             logger.error(f"Job {job_id} failed: {e}")
-            async with session_factory() as err_session:
-                err_repo = JobRepository(err_session)
-                await err_repo.update_job(
-                    job_id, status="failed", error_message=str(e)
-                )
+            await repo.update_job(
+                job_id, status="failed", error_message=str(e)
+            )
         finally:
             if os.path.exists(file_path):
                 os.remove(file_path)

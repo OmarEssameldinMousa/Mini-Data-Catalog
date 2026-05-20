@@ -57,11 +57,16 @@ async def upload_file(
         dataset_id=dataset_id,
     )
 
-    # Build clients from app.state
+    # Build clients from app.state (separate clients per service)
     settings = get_settings()
-    http_client = request.app.state.http_client
-    validator_client = SchemaValidatorClient(http_client=http_client, base_url=settings.validator_url)
-    registry_client = RegistryClient(http_client=http_client, base_url=settings.registry_url)
+    validator_client = SchemaValidatorClient(
+        http_client=request.app.state.validator_http_client,
+        base_url=settings.validator_url,
+    )
+    registry_client = RegistryClient(
+        http_client=request.app.state.registry_http_client,
+        base_url=settings.registry_url,
+    )
 
     # Launch async background task
     asyncio.create_task(

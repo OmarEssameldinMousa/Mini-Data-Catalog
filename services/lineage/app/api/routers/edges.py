@@ -6,7 +6,6 @@ from fastapi import Body
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.settings import get_settings
 from app.crud.lineage import LineageCRUD
 from app.clients.registry_client import RegistryClient
 from app.schemas.edge import EdgeCreate, EdgeResponse
@@ -19,10 +18,9 @@ router = APIRouter(
 
 
 def _get_registry_client(request: Request) -> RegistryClient:
-    settings = get_settings()
     return RegistryClient(
         http_client=request.app.state.http_client,
-        base_url=settings.registry_url,
+        base_url=request.app.state.registry_url,
     )
 
 

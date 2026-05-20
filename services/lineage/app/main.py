@@ -20,7 +20,11 @@ async def lifespan(app: FastAPI):
     # startup
     print("Starting up Lineage Service...")
     await init_db()
-    app.state.http_client = httpx.AsyncClient()
+
+    settings = get_settings()
+    _timeout = httpx.Timeout(connect=3.0, read=10.0, write=5.0, pool=2.0)
+    app.state.http_client = httpx.AsyncClient(timeout=_timeout)
+    app.state.registry_url = settings.registry_url
 
     yield
 

@@ -1,5 +1,6 @@
 import asyncio
 import uuid
+import httpx
 from sqlalchemy import select, literal
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import aliased
@@ -35,21 +36,23 @@ class LineageCRUD:
         exist in Registry and the edge would not create a cycle.
         """
         # 1. Verify both datasets exist in Registry (parallel)
-        try:
-            upstream_ds, downstream_ds = await asyncio.gather(
-                registry_client.get_dataset(str(edge_in.upstream_id)),
-                registry_client.get_dataset(str(edge_in.downstream_id)),
-            )
-        except Exception as e:
-            raise ServiceUnavailableError(
-                service_name="Registry",
-                detail=str(e),
-            )
+        results = await asyncio.gather(
+            registry_client.get_dataset(str(edge_in.upstream_id)),
+            registry_client.get_dataset(str(edge_in.downstream_id)),
+            return_exceptions=True,
+        )
 
-        if upstream_ds is None:
-            raise DatasetNotFoundInRegistry(dataset_id=str(edge_in.upstream_id))
-        if downstream_ds is None:
-            raise DatasetNotFoundInRegistry(dataset_id=str(edge_in.downstream_id))
+        for i, (result, ds_id) in enumerate(
+            zip(results, [edge_in.upstream_id, edge_in.downstream_id])
+        ):
+            if isinstance(result, (httpx.ConnectError, httpx.TimeoutException)):
+                raise ServiceUnavailableError(
+                    service_name="Registry", detail=str(result)
+                )
+            if isinstance(result, Exception):
+                raise result  # re-raise HTTP errors as-is (e.g. 500)
+            if result is None:
+                raise DatasetNotFoundInRegistry(dataset_id=str(ds_id))
 
         # 2. Cycle detection: check if upstream_id is reachable from downstream_id
         impacted_ids = await self.get_impact_analysis(edge_in.downstream_id)

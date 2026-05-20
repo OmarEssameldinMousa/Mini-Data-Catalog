@@ -18,14 +18,17 @@ async def lifespan(app: FastAPI):
     from app.core.database import AsyncSessionFactory as factory
     app.state.session_factory = factory
 
-    # Create shared async HTTP client for inter-service calls
-    app.state.http_client = httpx.AsyncClient()
+    # Create per-service async HTTP clients with explicit timeouts
+    _timeout = httpx.Timeout(connect=3.0, read=10.0, write=5.0, pool=2.0)
+    app.state.validator_http_client = httpx.AsyncClient(timeout=_timeout)
+    app.state.registry_http_client = httpx.AsyncClient(timeout=_timeout)
 
     yield
 
     # shutdown
     print("Shutting down Ingestion Service...")
-    await app.state.http_client.aclose()
+    await app.state.validator_http_client.aclose()
+    await app.state.registry_http_client.aclose()
     await close_db()
 
 
