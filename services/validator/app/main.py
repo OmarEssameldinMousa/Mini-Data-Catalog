@@ -5,6 +5,12 @@ from app.core.config import get_settings
 from app.routers.schemas import router as schemas_router
 from app.routers.validation import router as validation_router
 from app.core.database import init_db, close_db
+from app.exceptions import (
+    ValidatorException,
+    SchemaNotFound,
+    SchemaVersionNotFound,
+    ActiveVersionNotFound,
+)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -24,6 +30,26 @@ def create_app() -> FastAPI:
         title=settings.service_name,
         lifespan=lifespan,
     )
+
+    # ── Domain Exception Handlers (mirrors Registry pattern) ──
+
+    @app.exception_handler(SchemaNotFound)
+    async def schema_not_found_handler(request: Request, exc: SchemaNotFound):
+        return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+    @app.exception_handler(SchemaVersionNotFound)
+    async def schema_version_not_found_handler(request: Request, exc: SchemaVersionNotFound):
+        return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+    @app.exception_handler(ActiveVersionNotFound)
+    async def active_version_not_found_handler(request: Request, exc: ActiveVersionNotFound):
+        return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+    @app.exception_handler(ValidatorException)
+    async def validator_exception_handler(request: Request, exc: ValidatorException):
+        return JSONResponse(status_code=400, content={"detail": str(exc)})
+
+    # ── Routes ──
 
     @app.get("/health")
     async def health():

@@ -13,7 +13,7 @@ class ValidationEngine:
         self.fields = {f.name: f for f in fields}
         self.strict_mode = strict_mode
 
-    async def validate(self, payload: Dict[str, Any]) -> ValidationReport:
+    def validate(self, payload: Dict[str, Any]) -> ValidationReport:
         errors: List[FieldError] = []
 
         # check for unknown fields
@@ -64,7 +64,7 @@ class ValidationEngine:
                 continue
 
             # Type check
-            if await self._check_type_mismatch(value, field_def.type):
+            if self._check_type_mismatch(value, field_def.type):
                 errors.append(
                     FieldError(
                         field=field_name,
@@ -158,7 +158,7 @@ class ValidationEngine:
         is_valid = len(errors) == 0
         return ValidationReport(valid=is_valid, errors=errors)
 
-    async def _check_type_mismatch(self, v:Any, field_type: str) -> bool:
+    def _check_type_mismatch(self, v: Any, field_type: str) -> bool:
         
         type_map = {
             "integer": int,
@@ -172,14 +172,3 @@ class ValidationEngine:
         if expected_type is None:
             return True
         return type(v) is not expected_type
-
-
-        
-    
-            
-            
-            
-
-            
-
-    

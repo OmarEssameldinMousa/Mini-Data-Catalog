@@ -1,6 +1,12 @@
 from app.repositories.schema_repo import SchemaRepository
 from app.schemas.field import FieldDefinition
+from app.schemas.validation import ValidationReport, ValidationContractResponse, ValidationInternalResponse
+from app.services.validation_engine import ValidationEngine
+from app.exceptions import SchemaNotFound, SchemaVersionNotFound, ActiveVersionNotFound
 import uuid
+import hashlib
+import json
+from typing import Any, Dict
 from app.models.schema import Schema
 from app.models.schema_version import SchemaVersion
 from app.models.validation_result import ValidationResult
@@ -31,6 +37,10 @@ class SchemaService:
             is_breaking=False,
             changelog="first version"
         )
+
+        # Single transaction: service controls the commit boundary
+        await self.repo.session.commit()
+        await self.repo.session.refresh(new_schema)
 
         return new_schema
     
@@ -74,10 +84,13 @@ class SchemaService:
         schema = await self.repo.get_schema_by_id(schema_id=schema_id)
         
         if not schema:
-            raise ValueError("Schema not found")
+            raise SchemaNotFound(schema_id=str(schema_id))
         
         # get the current active version 
         current_version = await self.repo.get_current_active_schema_version(schema_id=schema_id)
+
+        if not current_version:
+            raise ActiveVersionNotFound(schema_id=str(schema_id))
 
         current_version_fields = [FieldDefinition.model_validate(f) for f in current_version.field_definitions]
         # compare the new fields with the current version fields
@@ -103,16 +116,51 @@ class SchemaService:
             is_current=True
         )
 
+        # Service controls the commit boundary
+        await self.repo.session.commit()
+        await self.repo.session.refresh(new_version)
+
         return new_version
     
-    async def save_validation_result(self, schema_version_id: uuid.UUID, is_valid: bool, error_report: dict, payload_hash: str) -> ValidationResult:
-        return await self.repo.save_validation_result(
-            schema_version_id=schema_version_id,
-            is_valid=is_valid,
-            error_report=error_report,
+    async def validate_payload(
+        self,
+        schema_id: uuid.UUID,
+        payload: Dict[str, Any]
+    ) -> tuple[ValidationReport, ValidationResult]:
+        """
+        Full validation workflow — moved from the route handler.
+        1. Look up the active schema version
+        2. Parse field definitions
+        3. Run the validation engine
+        4. Hash the payload
+        5. Persist the result
+        Returns both the report (for the response) and the persisted result.
+        """
+        current_active_version = await self.repo.get_current_active_schema_version(schema_id)
+        if not current_active_version:
+            raise ActiveVersionNotFound(schema_id=str(schema_id))
+
+        parsed_fields = [FieldDefinition.model_validate(f) for f in current_active_version.field_definitions]
+
+        engine = ValidationEngine(fields=parsed_fields)
+        report = engine.validate(payload)
+
+        payload_hash = hashlib.sha256(
+            json.dumps(payload, sort_keys=True).encode()
+        ).hexdigest()
+
+        validation_result = await self.repo.save_validation_result(
+            schema_version_id=current_active_version.id,
+            is_valid=report.valid,
+            error_report=report.model_dump(),
             payload_hash=payload_hash
         )
-    
+
+        await self.repo.session.commit()
+        await self.repo.session.refresh(validation_result)
+
+        return report, validation_result
+
     async def get_schema_with_version(self, schema_id: uuid.UUID, version_number: str)-> SchemaVersion:
         schema = None
         if version_number == "active":

@@ -1,11 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.services.schema_service import SchemaService
 from app.schemas.schema import SchemaCreateRequest, VersionCreateRequest, SchemaResponse
-from app.models.db_enums.enums import ErrorCodesEnum
 from app.repositories.schema_repo import SchemaRepository
+from app.exceptions import SchemaVersionNotFound
 import uuid
+
 router = APIRouter(
     prefix="/schemas",
     tags=["Schemas"]
@@ -38,14 +39,12 @@ async def add_schema_version(
     request: VersionCreateRequest,
     service: SchemaService = Depends(get_schema_service)
     ):
-    try:
-        await service.add_schema_version(schema_id=schema_id,new_fields=request.fields, new_version_number=version_number)
-        return {
-            "message": "Version Created successfully"
-        }
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    
+    # No try/except needed — SchemaNotFound and ActiveVersionNotFound
+    # are domain exceptions caught by registered exception handlers in main.py
+    await service.add_schema_version(schema_id=schema_id, new_fields=request.fields, new_version_number=version_number)
+    return {
+        "message": "Version Created successfully"
+    }
 
 
 @router.get("/{schema_id}/versions/{version_number}/stats")
@@ -57,7 +56,7 @@ async def get_schema_stats(
     schema_version = await service.get_schema_with_version(schema_id=schema_id, version_number=version_number)
     
     if not schema_version:
-        raise HTTPException(status_code=404, detail="Schema version not found")
+        raise SchemaVersionNotFound(schema_id=str(schema_id), version_number=version_number)
     
     stats = await service.get_schema_version_stats(schema_version_id=schema_version.id)
     
