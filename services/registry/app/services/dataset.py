@@ -51,11 +51,8 @@ class DatasetService:
         return True
 
     async def get_dataset_versions(self, dataset_id: str, limit: int = 10, offset: int = 0):
-        # Allow repo to just return models
+        await self.get_dataset(dataset_id)
         datasets, total = await self.repo.get_versions(dataset_id, limit, offset)
-        if total == 0:
-            # Optionally check if dataset exists if we want to differentiate 404s
-            await self.get_dataset(dataset_id)
         return datasets, total
 
     async def create_dataset_version(self, dataset_id: str, version_data: DataSetVersionCreate):
