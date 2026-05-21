@@ -7,11 +7,24 @@ from app.core.database import init_db, close_db
 from app.api.v1.jobs import jobs_router
 from app.exceptions import IngestionException, JobNotFound
 
+from app.middleware.correlation import get_correlation_id, CorrelationIDMiddleware
+from app.core.logging_config import setup_logging
+import logging
+
+logger = logging.getLogger(__name__)
+
+async def _inject_correlation_id(request: httpx.Request) -> None:
+    request.headers["X-Correlation-ID"] = get_correlation_id()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # startup
-    print("Starting up Ingestion Service...")
+    settings = get_settings()
+    setup_logging(
+        service_name=settings.service_name,
+        debug=settings.debug,
+    )
+    logger.info("Starting up Ingestion Service...")
     await init_db()
 
     # Store session factory on app.state for background tasks
@@ -26,7 +39,7 @@ async def lifespan(app: FastAPI):
     yield
 
     # shutdown
-    print("Shutting down Ingestion Service...")
+    logger.info("Shutting down Ingestion Service...")
     await app.state.validator_http_client.aclose()
     await app.state.registry_http_client.aclose()
     await close_db()
@@ -38,8 +51,10 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title=settings.service_name,
         lifespan=lifespan,
+        root_path="/api/ingestion",
     )
-
+    
+    app.add_middleware(CorrelationIDMiddleware)
     # ── Domain Exception Handlers ──
 
     @app.exception_handler(JobNotFound)

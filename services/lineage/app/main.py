@@ -14,14 +14,27 @@ from app.exceptions import (
     ServiceUnavailableError,
 )
 
+from app.middleware.correlation import get_correlation_id, CorrelationIDMiddleware
+from app.core.logging_config import setup_logging
+import logging
+
+logger = logging.getLogger(__name__)
+
+async def _inject_correlation_id(request: httpx.Request) -> None:
+    request.headers["X-Correlation-ID"] = get_correlation_id()
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # startup
-    print("Starting up Lineage Service...")
+    settings = get_settings()
+    setup_logging(
+        service_name=settings.service_name,
+        debug=settings.debug,
+    )
+    logger.info("Starting up Lineage Service...")
     await init_db()
 
-    settings = get_settings()
     _timeout = httpx.Timeout(connect=3.0, read=10.0, write=5.0, pool=2.0)
     app.state.http_client = httpx.AsyncClient(timeout=_timeout)
     app.state.registry_url = settings.registry_url
@@ -29,7 +42,7 @@ async def lifespan(app: FastAPI):
     yield
 
     # shutdown
-    print("Shutting down Lineage Service...")
+    logger.info("Shutting down Lineage Service...")
     await app.state.http_client.aclose()
     await close_db()
 
@@ -40,10 +53,11 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title=settings.service_name,
         lifespan=lifespan,
+        root_path="/api/lineage",
     )
 
     # ── Domain Exception Handlers ──
-
+    app.add_middleware(CorrelationIDMiddleware)
     @app.exception_handler(EdgeNotFound)
     async def edge_not_found_handler(request: Request, exc: EdgeNotFound):
         return JSONResponse(status_code=404, content={"detail": str(exc)})

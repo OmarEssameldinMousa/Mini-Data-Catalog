@@ -6,3 +6,4 @@ alembic
 pydantic-settings
 httpx
 asyncpg
+python-json-logger

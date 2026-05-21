@@ -18,11 +18,14 @@ router = APIRouter(
 @router.get("/search", response_model=List[DatasetRead])
 async def search_datasets(
     q: str = Query(..., min_length=1),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    limit: int = Query(20, ge=0, le=100),
+    offset: int = Query(0, ge=0),
 ):
-    # TODO: Implement search_datasets in DatasetService / Repository
-    raise HTTPException(status_code=501, detail="Search not implemented yet")
-    
+    service = DatasetService(session=db)
+    datasets = await service.search_datasets(q, limit, offset)
+    return datasets
+
 @router.post("/", response_model=DatasetRead, status_code=201)
 async def create_dataset(
     dataset_in: DatasetCreate,

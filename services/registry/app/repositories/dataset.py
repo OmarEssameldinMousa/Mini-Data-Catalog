@@ -214,3 +214,19 @@ class DatasetRepository:
         await self.session.delete(version)
         await self.session.commit()
         return True
+
+    async def search(self, query: str, limit: int, offset: int) -> list[Dataset]:
+        stmt = (
+            select(Dataset)
+            .options(selectinload(Dataset.tags))
+            .where(
+                Dataset.name.ilike(f"%{query}%") |
+                Dataset.description.ilike(f"%{query}%") |
+                Dataset.tags.any(Tag.name.ilike(f"%{query}%"))
+            )
+            .limit(limit) 
+            .offset(offset)
+        )
+        result = await self.session.execute(stmt)
+        
+        return result.scalars().all()

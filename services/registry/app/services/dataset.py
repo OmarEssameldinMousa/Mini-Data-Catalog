@@ -87,3 +87,6 @@ class DatasetService:
         if not success:
             raise VersionNotFound(version_id=version_id)
         return True
+
+    async def search_datasets(self, query: str, limit: int, offset: int):
+        return await self.repo.search(query, limit, offset)

@@ -8,3 +8,4 @@ httpx
 asyncpg
 pandas
 python-multipart
+python-json-logger

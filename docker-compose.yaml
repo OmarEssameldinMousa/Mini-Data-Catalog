@@ -116,6 +116,7 @@ services:
       - "80:80"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf
+      - ./nginx:/usr/share/nginx/html
     depends_on:
       registry:
         condition: service_healthy
