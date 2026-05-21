@@ -183,7 +183,42 @@ curl -X GET http://localhost/api/registry/health
 }
 ```
 
-### 2. Create a Dataset
+### 2. Register a Schema (Validator Service)
+**Request:**
+```bash
+curl -X POST http://localhost/api/validator/schemas/ \
+  -H "Content-Type: application/json" \
+  -d '{
+  "name": "customer_transactions_schema",
+  "description": "Schema for customer transactions",
+  "owner": "finance_team",
+  "initial_fields": [
+    {
+      "name": "transaction_id",
+      "type": "integer"
+    },
+    {
+      "name": "amount",
+      "type": "float",
+      "constraints": {
+        "min_value": 0.0
+      }
+    }
+  ]
+}'
+```
+**Response:**
+```json
+{
+  "id": "2d645313-960b-4675-9525-a35521c15baa",
+  "name": "customer_transactions_schema",
+  "description": "Schema for customer transactions",
+  "owner": "finance_team",
+  "created_at": "2026-05-21T16:05:16.891187"
+}
+```
+
+### 3. Create a Dataset (Registry Service)
 **Request:**
 ```bash
 curl -X POST http://localhost/api/registry/datasets/ \
@@ -192,21 +227,74 @@ curl -X POST http://localhost/api/registry/datasets/ \
     "name": "customer_transactions",
     "description": "Daily customer transaction logs",
     "owner": "finance_team",
-    "data_format": "PARQUET",
-    "status": "ACTIVE"
+    "source_uri": "s3://my-bucket/customer_transactions/",
+    "data_format": "parquet",
+    "versions": [
+      {
+        "schema_snapshot": {
+          "type": "object",
+          "properties": {
+            "transaction_id": {"type": "integer"},
+            "amount": {"type": "number"}
+          }
+        },
+        "row_count": 1000,
+        "file_size_bytes": 1048576
+      }
+    ]
   }'
 ```
 **Response:**
 ```json
 {
-  "id": "123e4567-e89b-12d3-a456-426614174000",
   "name": "customer_transactions",
-  "description": "Daily customer transaction logs",
   "owner": "finance_team",
-  "data_format": "PARQUET",
-  "status": "ACTIVE",
-  "created_at": "2026-05-21T15:30:00Z",
-  "updated_at": "2026-05-21T15:30:00Z"
+  "description": "Daily customer transaction logs",
+  "source_uri": "s3://my-bucket/customer_transactions/",
+  "data_format": "parquet",
+  "id": "e31baebc-3203-4d13-b7ef-859e729a3394",
+  "status": "active",
+  "created_at": "2026-05-21T16:04:58.193438",
+  "updated_at": "2026-05-21T16:04:58.193438",
+  "tags": [],
+  "versions": [
+    {
+      "dataset_id": "e31baebc-3203-4d13-b7ef-859e729a3394",
+      "version_number": 1,
+      "schema_snapshot": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {"type": "integer"},
+          "amount": {"type": "number"}
+        }
+      },
+      "row_count": 1000,
+      "file_size_bytes": 1048576,
+      "id": "e5c62eae-d2e6-4525-b95c-b02d51ac7cb1",
+      "created_at": "2026-05-21T16:04:58.193438"
+    }
+  ]
+}
+```
+
+### 4. Track Data Lineage (Lineage Service)
+After creating a downstream dataset (e.g., `c8326dd1-39bb-4881-8074-e2e0263c6265`), you can track that it was derived from our original `customer_transactions` dataset.
+
+**Request:**
+```bash
+curl -X POST http://localhost/api/lineage/edges \
+  -H "Content-Type: application/json" \
+  -d '{
+    "upstream_id": "e31baebc-3203-4d13-b7ef-859e729a3394",
+    "downstream_id": "c8326dd1-39bb-4881-8074-e2e0263c6265"
+  }'
+```
+**Response:**
+```json
+{
+  "upstream_id": "e31baebc-3203-4d13-b7ef-859e729a3394",
+  "downstream_id": "c8326dd1-39bb-4881-8074-e2e0263c6265",
+  "created_at": "2026-05-21T16:06:03.067580Z"
 }
 ```
 
